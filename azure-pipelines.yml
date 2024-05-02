@@ -1,0 +1,61 @@
+
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more: 
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+trigger:
+  - master
+  
+pr:
+  - master
+  
+pool: 
+  name: my_self_pool
+  demands:
+  - agent.name -equals DELEQ0283000764
+
+
+
+variables:
+  python.version: '3.11'
+
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(python.version)'
+  displayName: 'Use Python $(python.version)'
+
+- script: |
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+  displayName: 'Install dependencies'
+
+#- script: |
+#    pip install pytest pytest-azurepipelines
+#    pytest
+#  displayName: 'pytest'
+- script: |
+    pytest tests/tests.py --junitxml=test-reports/out_report.xml      
+  displayName: 'Run unit tests'
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFiles: '**/test-reports/*.xml' 
+    testRunTitle: 'Python Unit Tests'
+    #testRunSystem: 'Python unittest' # python -m unittest discover //////// pytest tests --junitxml=xml-report/out_report.xml
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+  displayName: 'Publish test results'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)' #'$(Build.BinariesDirectory)' 
+  # Archive
+    archiveType: 'zip' 
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    artifactName: 'drop' # string. Required. The name of this artifact. Default: drop.
+    targetPath: '$(Build.ArtifactStagingDirectory)'
